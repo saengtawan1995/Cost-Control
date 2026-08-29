@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>จัดการโครงการ • แสงตะวัน</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root{
+    --op:#2563eb; --op-d:#1d4ed8; --cl:#e03131; --cl-d:#c92a2a;
+    --ink:#1e293b; --mut:#64748b; --line:#e2e8f0; --bg:#f1f5f9;
+    --red:#E02424; --grn:#16a34a; --acc:#2563eb; --acc-d:#1d4ed8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,"Segoe UI","Sarabun",Roboto,sans-serif;
+    background:var(--bg); color:var(--ink); font-size:16px; line-height:1.5;
+    padding:0 0 40px;
+  }
+  .hd{
+    background:var(--acc); color:#fff; padding:16px 18px;
+    display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:5;
+    transition:background .15s;
+  }
+  .hd .ic{font-size:22px}
+  .hd .tt{font-weight:700; font-size:18px}
+  .who{font-size:13px; color:#e5edff; margin-top:2px}
+  .wrap{max-width:560px; margin:0 auto; padding:14px}
+  /* แท็บสลับเปิด/ปิด */
+  .tabs{display:flex; gap:8px; margin-bottom:14px}
+  .tabs button{flex:1; padding:13px 0; border:2px solid var(--line); background:#fff;
+    border-radius:12px; font-weight:700; font-size:15px; color:var(--mut); cursor:pointer}
+  .tabs button.on.open{background:#dbeafe; border-color:var(--op); color:var(--op-d)}
+  .tabs button.on.close{background:#ffe3e3; border-color:var(--cl); color:var(--cl-d)}
+  .card{background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px}
+  label{display:block; font-weight:600; font-size:14px; margin:12px 0 6px}
+  label:first-child{margin-top:0}
+  label .req{color:var(--red)}
+  input,select,textarea{
+    width:100%; padding:12px 14px; font-size:16px; border:1px solid var(--line);
+    border-radius:10px; background:#fff; color:var(--ink); font-family:inherit;
+  }
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--acc)}
+  .hint{font-size:12px; color:var(--mut); margin-top:4px}
+  .btn{
+    width:100%; padding:15px; font-size:17px; font-weight:700; color:#fff;
+    background:var(--acc); border:none; border-radius:12px; cursor:pointer;
+  }
+  .btn:active{background:var(--acc-d)}
+  .btn:disabled{background:#cbd5e1; cursor:not-allowed}
+  .btn2{width:100%; padding:15px; font-size:17px; font-weight:700; color:var(--acc);
+    background:#fff; border:2px solid var(--acc); border-radius:12px; cursor:pointer;}
+  .msg{padding:14px; border-radius:10px; margin:0 0 12px; font-size:14px; white-space:pre-line; display:none}
+  .msg.ok{background:#dcfce7; color:#166534; display:block}
+  .msg.err{background:#fee2e2; color:#991b1b; display:block}
+  .center{text-align:center; color:var(--mut); padding:40px 20px}
+  .hide{display:none !important}
+  .codechip{display:inline-block;background:#dbeafe;color:#1d4ed8;font-weight:800;padding:8px 16px;border-radius:10px;font-size:18px;letter-spacing:.5px}
+  .amount{font-size:18px; font-weight:700; text-align:right}
+  /* สรุปเงินโครงการ (ปิด) */
+  .sum{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px}
+  .sum .a{flex:1; min-width:100px; background:#f8fafc; border-radius:10px; padding:10px 12px}
+  .sum .a .k{font-size:11px; color:var(--mut)}
+  .sum .a .v{font-weight:700; font-size:16px}
+  .sum .a.in .v{color:var(--grn)}
+  .sum .a.ex .v{color:#ea580c}
+  .sum .a.pf .v{color:#2563eb}
+  .credit-ok{background:#f0fdf4; color:#166534; border-radius:10px; padding:12px; margin-top:12px; font-size:14px; font-weight:600}
+  .credit-bad{background:#fef2f2; color:#991b1b; border-radius:10px; padding:12px; margin-top:12px; font-size:14px; font-weight:600; white-space:pre-line}
+  .ck{display:flex; align-items:flex-start; gap:10px; padding:11px 4px; border-bottom:1px solid #eee; cursor:pointer}
+  .ck:last-child{border-bottom:none}
+  .ck input{width:22px; height:22px; flex:none; margin-top:1px}
+  .ck .t{font-size:14.5px}
+  /* ปฏิทินไทย */
+  .datebtn{width:100%;text-align:left;padding:12px 14px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;font-size:16px;color:var(--ink);}
+  .cal{margin-top:8px;border:1px solid #e2e8f0;border-radius:14px;padding:12px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.12);}
+  .cal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .cal-hd button{border:none;background:#f1f5f9;border-radius:10px;width:40px;height:40px;font-size:22px;line-height:1;color:var(--acc);}
+  #calTitle{font-weight:700;font-size:16px;color:var(--ink);}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .cal-dow div{text-align:center;font-size:12px;color:var(--mut);padding:4px 0;}
+  .cal-day{text-align:center;padding:10px 0;border-radius:10px;font-size:15px;cursor:pointer;color:var(--ink);}
+  .cal-day.mut{color:transparent;cursor:default;}
+  .cal-day.sel{background:var(--acc);color:#fff;font-weight:700;}
+  .cal-day.today{border:1px solid var(--acc);}
+  .cal-foot{margin-top:8px;text-align:right;}
+  .cal-foot button{border:none;background:#f1f5f9;border-radius:10px;padding:8px 16px;color:var(--acc);font-weight:600;}
+</style>
+</head>
+<body>
+
+<div class="hd" id="hd">
+  <span class="ic" id="hdIc">🏗️</span>
+  <div>
+    <div class="tt" id="hdTt">จัดการโครงการ</div>
+    <div class="who" id="who">กำลังโหลด…</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="msg" class="msg"></div>
+
+  <div id="loading" class="center">⏳ กำลังโหลดข้อมูล…</div>
+
+  <div id="main" class="hide">
+    <div class="tabs">
+      <button type="button" id="tabOpen" class="on open" onclick="switchTab('open')">🏗️ เปิดโครงการ</button>
+      <button type="button" id="tabClose" class="close" onclick="switchTab('close')">🔒 ปิดโครงการ</button>
+    </div>
+
+    <!-- ================= เปิดโครงการ ================= -->
+    <div id="openView">
+      <div class="card">
+        <label class="req">ชื่อโครงการ</label>
+        <input type="text" id="name" placeholder="เช่น ก่อสร้างถนน คสล. สายบ้านห้วยข้าวก่ำ" />
+
+        <label>ชื่อย่อ (ใช้แสดงในเมนู)</label>
+        <input type="text" id="abbr" placeholder="เช่น ถนนห้วยข้าวก่ำ" />
+        <div class="hint">ถ้าเว้นว่าง เมนูจะแสดงชื่อเต็ม</div>
+
+        <label class="req">วันเริ่มต้นโครงการ</label>
+        <button type="button" id="startBtn" class="datebtn">— เลือกวันที่ —</button>
+        <input type="hidden" id="start" />
+        <div class="hint">รหัสโครงการจะสร้างอัตโนมัติจากปีที่เริ่ม</div>
+
+        <div id="codeBox" class="hide" style="margin-top:10px">
+          <span style="font-size:13px;color:var(--mut)">รหัสที่จะได้: </span>
+          <span class="codechip" id="codePreview">—</span>
+        </div>
+
+        <label>กำหนดแล้วเสร็จ (ถ้ามี)</label>
+        <button type="button" id="deadlineBtn" class="datebtn">— เลือกวันที่ —</button>
+        <input type="hidden" id="deadline" />
+
+        <label>งบประมาณโครงการ (บาท)</label>
+        <input type="text" id="budget" class="amount" inputmode="decimal" placeholder="0.00" />
+
+        <label>หน่วยงาน / เจ้าของงาน</label>
+        <input type="text" id="owner" placeholder="เช่น เทศบาลตำบลจุน" />
+      </div>
+      <button type="button" class="btn" id="openBtn">✔ เปิดโครงการ</button>
+    </div>
+
+    <!-- ================= ปิดโครงการ ================= -->
+    <div id="closeView" class="hide">
+      <div class="card">
+        <label class="req">เลือกโครงการที่จะปิด</label>
+        <select id="project"><option value="">— เลือกโครงการ —</option></select>
+
+        <div id="checkLoading" class="center hide" style="padding:16px">⏳ กำลังตรวจสอบ…</div>
+        <div id="sumBox" class="hide">
+          <div class="sum">
+            <div class="a in"><div class="k">รายรับ</div><div class="v" id="sIncome">—</div></div>
+            <div class="a ex"><div class="k">รายจ่าย (ต้นทุน)</div><div class="v" id="sExpense">—</div></div>
+            <div class="a pf"><div class="k">กำไร</div><div class="v" id="sProfit">—</div></div>
+          </div>
+          <div id="creditBox"></div>
+        </div>
+      </div>
+
+      <div id="confirmCard" class="card hide">
+        <div style="font-weight:700;font-size:15px;margin-bottom:4px">ยืนยันก่อนปิดโครงการ</div>
+        <div class="hint" style="margin-bottom:6px">ติ๊กให้ครบทุกข้อ</div>
+        <label class="ck"><input type="checkbox" id="cfDeliver"><span class="t">ส่งมอบงาน และออกเอกสารครบถ้วนแล้ว</span></label>
+        <label class="ck"><input type="checkbox" id="cfChecklist"><span class="t">เช็คลิสต์งานครบ 100%</span></label>
+        <label class="ck"><input type="checkbox" id="cfCost"><span class="t">สรุปต้นทุนโครงการเรียบร้อยแล้ว</span></label>
+        <label class="ck"><input type="checkbox" id="cfReceivable"><span class="t">เก็บเงินครบ ไม่มีค้างรับ</span></label>
+
+        <label class="req" style="margin-top:14px">วันปิดโครงการ</label>
+        <button type="button" id="closeDateBtn" class="datebtn">— เลือกวันที่ —</button>
+        <input type="hidden" id="closeDate" />
+
+        <button type="button" class="btn" id="closeBtn" style="margin-top:16px" disabled>🔒 ยืนยันปิดโครงการ</button>
+      </div>
+    </div>
+
+    <!-- ปฏิทิน (ใช้ร่วมกันทุกช่อง) -->
+    <div id="cal" class="cal hide">
+      <div class="cal-hd">
+        <button type="button" id="calPrev">‹</button>
+        <div id="calTitle">—</div>
+        <button type="button" id="calNext">›</button>
+      </div>
+      <div class="cal-grid cal-dow" id="calDow"></div>
+      <div class="cal-grid" id="calDays"></div>
+      <div class="cal-foot"><button type="button" id="calToday">วันนี้</button></div>
+    </div>
+  </div>
+
+  <!-- หน้ายืนยันหลังทำสำเร็จ -->
+  <div id="done" class="card hide" style="text-align:center">
+    <div style="font-size:52px;line-height:1" id="doneIc">✅</div>
+    <div style="font-weight:700;font-size:20px;margin:8px 0 4px" id="doneTt">สำเร็จ</div>
+    <div id="doneDetail" class="hint" style="font-size:14px;margin-bottom:18px;white-space:pre-line;text-align:left">—</div>
+    <button type="button" class="btn" id="moreBtn">➕ ทำรายการอื่นต่อ</button>
+    <button type="button" class="btn2" id="dismissBtn" style="margin-top:10px">✖ ปิดหน้านี้</button>
+  </div>
+</div>
+
+<script>
+/* ========= ตั้งค่า ========= */
+// ★★ วาง LIFF ID ของเมนู “จัดการโครงการ” (เปิด+ปิดในหน้าเดียว) ที่นี่ ★★
+var LIFF_ID = "PASTE_PROJECT_LIFF_ID";
+var API_URL = "https://script.google.com/macros/s/AKfycbyyhj02NSB6JRWBAX8DEArox-ScQEGZ5MsKdyIV0ymYswEqifKSqqIIIciTpisTtNsg3Q/exec";
+
+/* ========= state ========= */
+var TOKEN = "";
+var TAB = "open";        // "open" | "close"
+var CREDIT_OK = false;   // ค้างจ่ายเครดิต = 0 หรือไม่
+
+/* ========= helpers ========= */
+function $(id){ return document.getElementById(id); }
+function show(el){ el.classList.remove("hide"); }
+function hide(el){ el.classList.add("hide"); }
+function showMsg(text, ok){
+  var m = $("msg");
+  m.textContent = text; m.className = "msg " + (ok ? "ok" : "err");
+  window.scrollTo(0,0);
+}
+function hideMsg(){ $("msg").className="msg"; }
+function fmt(n){ return (parseFloat(n)||0).toLocaleString("th-TH",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function opt(sel, arr, getV, getT){
+  for (var i=0;i<arr.length;i++){
+    var o=document.createElement("option");
+    o.value=getV(arr[i]); o.textContent=getT(arr[i]); sel.appendChild(o);
+  }
+}
+function api(payload){
+  payload.accessToken = TOKEN;
+  return fetch(API_URL, {
+    method:"POST",
+    headers:{ "Content-Type":"text/plain;charset=utf-8" },
+    body: JSON.stringify(payload)
+  }).then(function(r){ return r.json(); });
+}
+
+/* ========= สลับแท็บ ========= */
+function switchTab(tab){
+  TAB = tab; hideMsg(); hide($("cal"));
+  var op = tab==="open";
+  $("tabOpen").className = "on open"; $("tabClose").className = "close";
+  if(!op){ $("tabOpen").className = "open"; $("tabClose").className = "on close"; }
+  if(op){ show($("openView")); hide($("closeView")); }
+  else  { hide($("openView")); show($("closeView")); }
+  // เปลี่ยนสีธีมหัว + accent
+  var acc = op ? "#2563eb" : "#e03131", accD = op ? "#1d4ed8" : "#c92a2a";
+  document.documentElement.style.setProperty("--acc", acc);
+  document.documentElement.style.setProperty("--acc-d", accD);
+  $("hd").style.background = acc;
+  $("hdIc").textContent = op ? "🏗️" : "🔒";
+  $("hdTt").textContent = op ? "เปิดโครงการ" : "ปิดโครงการ";
+}
+
+/* ===== ปฏิทินไทย — hidden field เก็บ ค.ศ. yyyy-mm-dd, ใช้ร่วมกันทุกช่อง ===== */
+var TH_MONTHS=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+var TH_DOW=["อา","จ","อ","พ","พฤ","ศ","ส"];
+var calY, calM, calField="start";
+function pad2(n){ return (n<10?"0":"")+n; }
+function isoOf(y,m,d){ return y+"-"+pad2(m+1)+"-"+pad2(d); }
+function thaiDate(iso){
+  if(!iso) return "";
+  var p = iso.split("-"); if(p.length!==3) return "";
+  return parseInt(p[2],10) + " " + TH_MONTHS[parseInt(p[1],10)-1] + " " + (parseInt(p[0],10)+543);
+}
+// map: hidden field id -> ปุ่มแสดงผล id
+var BTN_OF = { start:"startBtn", deadline:"deadlineBtn", closeDate:"closeDateBtn" };
+function updateDateUI(field){
+  var v = $(field).value;
+  $(BTN_OF[field]).textContent = v ? thaiDate(v) : "— เลือกวันที่ —";
+}
+function onDatePicked(field){
+  if(field==="start") loadNextCode();
+  if(field==="closeDate") refreshCloseBtn();
+}
+function renderCal(){
+  $("calTitle").textContent = TH_MONTHS[calM] + " " + (calY+543);
+  var dow=$("calDow"); dow.innerHTML="";
+  for(var i=0;i<7;i++){ var e=document.createElement("div"); e.textContent=TH_DOW[i]; dow.appendChild(e); }
+  var days=$("calDays"); days.innerHTML="";
+  var first=new Date(calY,calM,1).getDay();
+  var dim=new Date(calY,calM+1,0).getDate();
+  var sel=$(calField).value;
+  var t=new Date(); var todayIso=isoOf(t.getFullYear(),t.getMonth(),t.getDate());
+  for(var i=0;i<first;i++){ var b=document.createElement("div"); b.className="cal-day mut"; days.appendChild(b); }
+  for(var dd=1;dd<=dim;dd++){
+    var iso=isoOf(calY,calM,dd);
+    var c=document.createElement("div"); c.className="cal-day"; c.textContent=dd;
+    if(iso===sel) c.className+=" sel";
+    if(iso===todayIso) c.className+=" today";
+    (function(x){ c.addEventListener("click",function(){
+      $(calField).value=x; updateDateUI(calField); hide($("cal")); onDatePicked(calField);
+    }); })(iso);
+    days.appendChild(c);
+  }
+}
+function openCal(field){
+  calField=field;
+  var v=$(field).value; var d = v ? new Date(v+"T00:00:00") : new Date();
+  calY=d.getFullYear(); calM=d.getMonth();
+  var box=$("cal"); var btn=$(BTN_OF[field]);
+  btn.parentNode.insertBefore(box, btn.nextSibling);   // วางปฏิทินใต้ปุ่มที่กด
+  renderCal(); show(box);
+}
+function toggleCal(field){
+  if ($("cal").classList.contains("hide") || calField!==field) openCal(field); else hide($("cal"));
+}
+
+/* ========= พรีวิวรหัสโครงการ (เปิด) ========= */
+function loadNextCode(){
+  var s=$("start").value;
+  if(!s){ hide($("codeBox")); return; }
+  api({ action:"project.next", start:s }).then(function(d){
+    if(d && d.ok && d.next){ $("codePreview").textContent = d.next.code; show($("codeBox")); }
+  }).catch(function(){});
+}
+
+/* ========= boot: ดึง user(สิทธิ์) + โครงการที่ยัง active ========= */
+function boot(){
+  api({ action:"close.boot" }).then(function(d){
+    if(!d || !d.ok){ showMsg("โหลดข้อมูลไม่สำเร็จ: " + ((d&&d.error)||"ไม่ทราบสาเหตุ"), false); return; }
+    var u = d.user||{};
+    $("who").textContent = "ผู้บันทึก: " + (u.name||"(ไม่ระบุ)") + (u.role?(" • "+u.role):"");
+    if(!u.canProject){
+      hide($("loading"));
+      showMsg("เฉพาะเจ้าของ/ผู้จัดการเท่านั้นที่เปิด-ปิดโครงการได้", false);
+      return;
+    }
+    var projs = d.projects||[];
+    opt($("project"), projs, function(x){return x.key;}, function(x){return x.label;});
+    if(!projs.length){
+      $("project").innerHTML = '<option value="">— ยังไม่มีโครงการที่เปิดอยู่ —</option>';
+    }
+    hide($("loading")); show($("main"));
+    switchTab("open");
+  }).catch(function(e){
+    showMsg("เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ: " + (e.message||e), false);
+  });
+}
+
+/* ================= เปิดโครงการ ================= */
+$("startBtn").addEventListener("click", function(){ toggleCal("start"); });
+$("deadlineBtn").addEventListener("click", function(){ toggleCal("deadline"); });
+$("openBtn").addEventListener("click", function(){
+  var name=($("name").value||"").trim();
+  var start=$("start").value;
+  if(!name){ showMsg("กรุณากรอกชื่อโครงการ", false); return; }
+  if(!start){ showMsg("กรุณาเลือกวันเริ่มต้นโครงการ", false); return; }
+
+  $("openBtn").disabled=true; $("openBtn").textContent="กำลังเปิดโครงการ…";
+  api({ action:"project.add",
+    name:name, abbr:($("abbr").value||"").trim(),
+    start:start, deadline:$("deadline").value,
+    budget:($("budget").value||"").replace(/,/g,"").trim(),
+    owner:($("owner").value||"").trim() })
+  .then(function(d){
+    $("openBtn").disabled=false; $("openBtn").textContent="✔ เปิดโครงการ";
+    if(!d.ok){ showMsg("เปิดโครงการไม่สำเร็จ: "+d.error, false); return; }
+    showDone("open", d.message || "เปิดโครงการเรียบร้อย");
+  }).catch(function(e){
+    $("openBtn").disabled=false; $("openBtn").textContent="✔ เปิดโครงการ";
+    showMsg("เปิดโครงการไม่สำเร็จ: "+(e.message||e), false);
+  });
+});
+
+/* ================= ปิดโครงการ ================= */
+$("closeDateBtn").addEventListener("click", function(){ toggleCal("closeDate"); });
+$("project").addEventListener("change", loadCheck);
+["cfDeliver","cfChecklist","cfCost","cfReceivable"].forEach(function(id){
+  $(id).addEventListener("change", refreshCloseBtn);
+});
+function loadCheck(){
+  var project=$("project").value;
+  hide($("sumBox")); hide($("confirmCard")); hideMsg();
+  CREDIT_OK=false;
+  if(!project){ return; }
+  show($("checkLoading"));
+  api({ action:"close.check", project:project }).then(function(d){
+    hide($("checkLoading"));
+    if(!d.ok){ showMsg("ตรวจสอบไม่สำเร็จ: "+d.error, false); return; }
+    var c=d.check||{};
+    $("sIncome").textContent = "฿"+fmt(c.income);
+    $("sExpense").textContent = "฿"+fmt(c.expense);
+    $("sProfit").textContent = "฿"+fmt(c.profit);
+    var cb=$("creditBox");
+    if((c.creditOutstanding||0) > 0){
+      CREDIT_OK=false;
+      cb.className="credit-bad";
+      cb.textContent = "⚠ ปิดไม่ได้ — ยังมีค้างจ่ายเครดิต ฿"+fmt(c.creditOutstanding)+"\nกรุณาเคลียร์ที่เมนู “จ่ายเจ้าหนี้” ก่อน";
+      show($("sumBox")); hide($("confirmCard"));
+    } else {
+      CREDIT_OK=true;
+      cb.className="credit-ok";
+      cb.textContent = "✓ ไม่มีค้างจ่ายเครดิต พร้อมปิดโครงการ";
+      show($("sumBox")); show($("confirmCard"));
+      if(!$("closeDate").value){
+        var now=new Date(); var th=new Date(now.getTime()+(now.getTimezoneOffset()+420)*60000);
+        $("closeDate").value = th.toISOString().slice(0,10); updateDateUI("closeDate");
+      }
+      refreshCloseBtn();
+    }
+  }).catch(function(e){
+    hide($("checkLoading")); showMsg("ตรวจสอบไม่สำเร็จ: "+(e.message||e), false);
+  });
+}
+function allChecked(){
+  return $("cfDeliver").checked && $("cfChecklist").checked && $("cfCost").checked && $("cfReceivable").checked;
+}
+function refreshCloseBtn(){
+  $("closeBtn").disabled = !(CREDIT_OK && allChecked() && $("closeDate").value);
+}
+$("closeBtn").addEventListener("click", function(){
+  var project=$("project").value;
+  if(!project){ showMsg("กรุณาเลือกโครงการ", false); return; }
+  if(!CREDIT_OK){ showMsg("ยังมีค้างจ่ายเครดิต ปิดโครงการไม่ได้", false); return; }
+  if(!allChecked()){ showMsg("กรุณาติ๊กยืนยันให้ครบทุกข้อ", false); return; }
+  if(!$("closeDate").value){ showMsg("กรุณาเลือกวันปิดโครงการ", false); return; }
+
+  $("closeBtn").disabled=true; $("closeBtn").textContent="กำลังปิดโครงการ…";
+  api({ action:"close.save", project:project, closeDate:$("closeDate").value,
+    cfDeliver:true, cfChecklist:true, cfCost:true, cfReceivable:true })
+  .then(function(d){
+    if(!d.ok){
+      $("closeBtn").disabled=false; $("closeBtn").textContent="🔒 ยืนยันปิดโครงการ";
+      showMsg("ปิดโครงการไม่สำเร็จ: "+d.error, false); return;
+    }
+    showDone("close", d.message || "ปิดโครงการเรียบร้อย");
+  }).catch(function(e){
+    $("closeBtn").disabled=false; $("closeBtn").textContent="🔒 ยืนยันปิดโครงการ";
+    showMsg("ปิดโครงการไม่สำเร็จ: "+(e.message||e), false);
+  });
+});
+
+/* ========= หน้าสำเร็จ ========= */
+function showDone(kind, detail){
+  $("doneIc").textContent = kind==="open" ? "✅" : "🔒";
+  $("doneTt").textContent = kind==="open" ? "เปิดโครงการสำเร็จ" : "ปิดโครงการเรียบร้อย";
+  $("doneDetail").textContent = detail;
+  hideMsg(); hide($("main")); show($("done")); window.scrollTo(0,0);
+}
+$("moreBtn").addEventListener("click", function(){
+  // reset ทั้งสองฟอร์ม + โหลดโครงการใหม่ (ยอด/สถานะอัปเดตแล้ว)
+  $("name").value=""; $("abbr").value=""; $("start").value=""; $("deadline").value="";
+  $("budget").value=""; $("owner").value=""; hide($("codeBox"));
+  updateDateUI("start"); updateDateUI("deadline");
+  $("project").innerHTML='<option value="">— เลือกโครงการ —</option>';
+  ["cfDeliver","cfChecklist","cfCost","cfReceivable"].forEach(function(id){ $(id).checked=false; });
+  $("closeDate").value=""; updateDateUI("closeDate");
+  hide($("sumBox")); hide($("confirmCard")); CREDIT_OK=false;
+  hide($("done")); show($("main")); hideMsg();
+  switchTab(TAB);
+  // reload รายชื่อโครงการ active
+  api({ action:"close.boot" }).then(function(d){
+    if(d && d.ok){
+      var projs=d.projects||[]; var sel=$("project");
+      sel.innerHTML='<option value="">— เลือกโครงการ —</option>';
+      opt(sel, projs, function(x){return x.key;}, function(x){return x.label;});
+    }
+  }).catch(function(){});
+  window.scrollTo(0,0);
+});
+$("dismissBtn").addEventListener("click", function(){
+  try{ if (window.liff && liff.closeWindow){ liff.closeWindow(); } }catch(e){}
+  $("done").innerHTML = '<div style="font-size:52px">👋</div>'
+    + '<div style="font-weight:700;font-size:18px;margin-top:8px">ปิดหน้านี้ได้เลยค่ะ</div>'
+    + '<div class="hint" style="margin-top:6px">บันทึกเรียบร้อยแล้ว</div>';
+});
+
+/* ปฏิทิน: ปุ่มร่วม */
+$("calPrev").addEventListener("click", function(){ calM--; if(calM<0){ calM=11; calY--; } renderCal(); });
+$("calNext").addEventListener("click", function(){ calM++; if(calM>11){ calM=0; calY++; } renderCal(); });
+$("calToday").addEventListener("click", function(){
+  var t=new Date(); $(calField).value=isoOf(t.getFullYear(),t.getMonth(),t.getDate());
+  updateDateUI(calField); hide($("cal")); onDatePicked(calField);
+});
+
+/* ========= start (LIFF) ========= */
+function start(){
+  if (!LIFF_ID || LIFF_ID==="PASTE_PROJECT_LIFF_ID"){ showMsg("ยังไม่ได้ตั้งค่า LIFF_ID (แก้ตัวแปร LIFF_ID ในไฟล์ project.html)", false); hide($("loading")); return; }
+  liff.init({ liffId: LIFF_ID }).then(function(){
+    if (!liff.isLoggedIn()){ liff.login(); return; }
+    TOKEN = liff.getAccessToken() || "";
+    if (!TOKEN){ showMsg("ไม่พบ access token — กรุณาเปิดฟอร์มนี้ผ่านแอป LINE", false); return; }
+    boot();
+  }).catch(function(e){
+    showMsg("เริ่มระบบ LINE ไม่สำเร็จ: " + (e.message||e), false);
+  });
+}
+window.addEventListener("load", start);
+</script>
+</body>
+</html>
