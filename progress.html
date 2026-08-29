@@ -135,6 +135,10 @@
     <label>หมายเหตุ <span style="color:var(--mut);font-weight:400">(ถ้ามี)</span></label>
     <textarea id="note" placeholder="รายละเอียดงานที่ทำ / อุปสรรค / สิ่งที่ต้องตามต่อ"></textarea>
 
+    <label>รูปหน้างาน <span style="color:var(--mut);font-weight:400">(ถ้ามี)</span></label>
+    <input type="file" id="photo" accept="image/*" capture="environment" />
+    <div id="photoInfo" class="hint hide" style="margin-top:6px"></div>
+
     <button type="button" class="btn" id="saveBtn" style="margin-top:16px">🏗️ บันทึกอัปเดต</button>
   </div>
 
@@ -273,6 +277,37 @@ $("calToday").addEventListener("click", function(){
   updateDateUI(); hide($("cal"));
 });
 
+/* ========= ย่อรูปเป็น base64 JPEG (กันไฟล์ใหญ่/ช้า) ========= */
+function readPhoto(){
+  return new Promise(function(resolve){
+    var f = $("photo").files && $("photo").files[0];
+    if(!f){ resolve(""); return; }
+    var fr = new FileReader();
+    fr.onload = function(){
+      var img = new Image();
+      img.onload = function(){
+        var MAX = 1280;
+        var w = img.width, h = img.height;
+        if(w>h && w>MAX){ h=Math.round(h*MAX/w); w=MAX; }
+        else if(h>=w && h>MAX){ w=Math.round(w*MAX/h); h=MAX; }
+        var cv = document.createElement("canvas"); cv.width=w; cv.height=h;
+        cv.getContext("2d").drawImage(img,0,0,w,h);
+        try{ resolve(cv.toDataURL("image/jpeg", 0.8)); }
+        catch(e){ resolve(""); }
+      };
+      img.onerror = function(){ resolve(""); };
+      img.src = fr.result;
+    };
+    fr.onerror = function(){ resolve(""); };
+    fr.readAsDataURL(f);
+  });
+}
+$("photo").addEventListener("change", function(){
+  var f = this.files && this.files[0];
+  if(f){ $("photoInfo").textContent = "แนบรูป: "+f.name; show($("photoInfo")); }
+  else { hide($("photoInfo")); }
+});
+
 /* ========= บันทึก ========= */
 $("saveBtn").addEventListener("click", function(){
   var project=$("project").value;
@@ -285,8 +320,9 @@ $("saveBtn").addEventListener("click", function(){
   if(!$("date").value){ showMsg("กรุณาเลือกวันที่อัปเดต", false); return; }
 
   $("saveBtn").disabled=true; $("saveBtn").textContent="กำลังบันทึก…";
-  api({ action:"progress.save", project:project, status:status,
-    percent:pct, phase:($("phase").value||"").trim(), note:($("note").value||"").trim(), date:$("date").value })
+  readPhoto().then(function(photo){
+  return api({ action:"progress.save", project:project, status:status,
+    percent:pct, phase:($("phase").value||"").trim(), note:($("note").value||"").trim(), date:$("date").value, photo:photo })
   .then(function(d){
     $("saveBtn").disabled=false; $("saveBtn").textContent="🏗️ บันทึกอัปเดต";
     if(!d.ok){ showMsg("บันทึกไม่สำเร็จ: "+d.error, false); return; }
@@ -296,12 +332,14 @@ $("saveBtn").addEventListener("click", function(){
     $("saveBtn").disabled=false; $("saveBtn").textContent="🏗️ บันทึกอัปเดต";
     showMsg("บันทึกไม่สำเร็จ: "+(e.message||e), false);
   });
+  });
 });
 
 // อัปเดตโครงการอื่นต่อ → รีเซ็ตฟอร์ม
 $("moreBtn").addEventListener("click", function(){
   $("project").value=""; $("status").value=""; hide($("statusOther")); $("statusOther").value="";
   $("phase").value=""; $("percent").value=""; $("note").value=""; hide($("curBox"));
+  $("photo").value=""; hide($("photoInfo"));
   var now=new Date(); var th=new Date(now.getTime()+(now.getTimezoneOffset()+420)*60000);
   $("date").value=th.toISOString().slice(0,10); updateDateUI();
   hide($("done")); show($("formView")); hideMsg(); window.scrollTo(0,0);
