@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>บันทึกค่าใช้จ่าย • แสงตะวัน</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root{
+    --red:#E02424; --red-d:#B91C1C; --ink:#1e293b; --mut:#64748b;
+    --line:#e2e8f0; --bg:#f1f5f9; --ok:#16a34a; --warn:#f59e0b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,"Segoe UI","Sarabun",Roboto,sans-serif;
+    background:var(--bg); color:var(--ink); font-size:16px; line-height:1.5;
+    padding:0 0 40px;
+  }
+  .hd{
+    background:var(--red); color:#fff; padding:16px 18px;
+    display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:5;
+  }
+  .hd .ic{font-size:22px}
+  .hd .tt{font-weight:700; font-size:18px}
+  .who{font-size:13px; color:#fee2e2; margin-top:2px}
+  .wrap{max-width:560px; margin:0 auto; padding:14px}
+  .card{background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px}
+  label{display:block; font-weight:600; font-size:14px; margin:12px 0 6px}
+  label .req{color:var(--red)}
+  input,select,textarea{
+    width:100%; padding:12px 14px; font-size:16px; border:1px solid var(--line);
+    border-radius:10px; background:#fff; color:var(--ink); font-family:inherit;
+  }
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--red)}
+  .row{display:flex; gap:10px}
+  .row>*{flex:1}
+  .seg{display:flex; gap:8px; margin-top:6px}
+  .seg button{
+    flex:1; padding:12px; border:1px solid var(--line); border-radius:10px;
+    background:#fff; color:var(--mut); font-size:15px; font-weight:600; cursor:pointer;
+  }
+  .seg button.on{background:var(--red); color:#fff; border-color:var(--red)}
+  .hint{font-size:12px; color:var(--mut); margin-top:4px}
+  .addstore{font-size:13px; color:var(--red); background:none; border:none; padding:6px 0; cursor:pointer; font-weight:600}
+  .bar{position:fixed; left:0; right:0; bottom:0; padding:12px 14px; background:#fff; border-top:1px solid var(--line)}
+  .bar .inner{max-width:560px; margin:0 auto}
+  .btn{
+    width:100%; padding:15px; font-size:17px; font-weight:700; color:#fff;
+    background:var(--red); border:none; border-radius:12px; cursor:pointer;
+  }
+  .btn:active{background:var(--red-d)}
+  .btn:disabled{background:#cbd5e1; cursor:not-allowed}
+  .msg{padding:14px; border-radius:10px; margin:0 0 12px; font-size:14px; white-space:pre-line; display:none}
+  .msg.ok{background:#dcfce7; color:#166534; display:block}
+  .msg.err{background:#fee2e2; color:#991b1b; display:block}
+  .center{text-align:center; color:var(--mut); padding:40px 20px}
+  .hide{display:none !important}
+  .amount{font-size:22px; font-weight:700; text-align:right}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <span class="ic">💸</span>
+  <div>
+    <div class="tt">บันทึกค่าใช้จ่าย</div>
+    <div class="who" id="who">กำลังโหลด…</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="msg" class="msg"></div>
+
+  <!-- หน้าโหลด -->
+  <div id="loading" class="center">⏳ กำลังโหลดข้อมูล…</div>
+
+  <!-- ฟอร์ม -->
+  <div id="form" class="card hide">
+    <label>โครงการ <span class="req">*</span></label>
+    <select id="project"><option value="">— เลือกโครงการ —</option></select>
+
+    <label>วันที่ <span class="req">*</span></label>
+    <input type="date" id="date" />
+
+    <label>หมวดหมู่ <span class="req">*</span></label>
+    <select id="category"><option value="">— เลือกหมวดหมู่ —</option></select>
+
+    <label>ร้านค้า / ผู้ขาย</label>
+    <select id="store"><option value="">— ไม่ระบุ —</option></select>
+    <button type="button" class="addstore" id="addStoreBtn">+ เพิ่มร้านใหม่</button>
+    <div id="newStoreBox" class="hide">
+      <div class="row">
+        <input type="text" id="newStore" placeholder="ชื่อร้านใหม่" />
+        <button type="button" class="btn" style="flex:0 0 90px;padding:12px" id="saveStoreBtn">บันทึก</button>
+      </div>
+      <div class="hint">เพิ่มแล้วจะถูกเลือกให้อัตโนมัติ</div>
+    </div>
+
+    <label>เลขที่บิล / เอกสาร</label>
+    <input type="text" id="billNo" placeholder="เช่น INV-001 (ไม่บังคับ)" />
+
+    <label>รายการ</label>
+    <input type="text" id="item" placeholder="รายละเอียด เช่น ค่าปูน 20 ถุง" />
+
+    <label>จำนวนเงิน (บาท) <span class="req">*</span></label>
+    <input type="text" id="amount" class="amount" inputmode="decimal" placeholder="0.00" />
+
+    <label>สถานะการชำระ</label>
+    <div class="seg" id="segPay">
+      <button type="button" data-v="paid" class="on">ชำระแล้ว</button>
+      <button type="button" data-v="debt">ค้างชำระ</button>
+    </div>
+
+    <div id="payMethodBox">
+      <label>วิธีชำระ</label>
+      <select id="pay"></select>
+    </div>
+    <div id="debtHint" class="hint hide">💡 ค้างชำระ: จะไปบันทึกวิธีชำระตอนจ่ายจริงภายหลัง</div>
+  </div>
+</div>
+
+<div class="bar hide" id="bar">
+  <div class="inner">
+    <button class="btn" id="submitBtn">บันทึกค่าใช้จ่าย</button>
+  </div>
+</div>
+
+<script>
+/* ========= ตั้งค่า ========= */
+var LIFF_ID = "2011277267-R8IA9hYV";
+// ★ วาง URL /exec ของ Apps Script Web App ที่ deploy แล้ว (ลงท้าย /exec)
+var API_URL = "PASTE_YOUR_APPS_SCRIPT_EXEC_URL_HERE";
+
+/* ========= state ========= */
+var TOKEN = "";           // LINE access token
+var PAY_STATUS = "paid";  // paid | debt
+
+/* ========= helpers ========= */
+function $(id){ return document.getElementById(id); }
+function show(el){ el.classList.remove("hide"); }
+function hide(el){ el.classList.add("hide"); }
+function showMsg(text, ok){
+  var m = $("msg");
+  m.textContent = text;
+  m.className = "msg " + (ok ? "ok" : "err");
+  window.scrollTo(0,0);
+}
+function opt(sel, arr, getV, getT){
+  for (var i=0;i<arr.length;i++){
+    var o=document.createElement("option");
+    o.value=getV(arr[i]); o.textContent=getT(arr[i]);
+    sel.appendChild(o);
+  }
+}
+// ยิง API แบบ text/plain (simple request → ไม่มี CORS preflight)
+function api(payload){
+  payload.accessToken = TOKEN;
+  return fetch(API_URL, {
+    method:"POST",
+    headers:{ "Content-Type":"text/plain;charset=utf-8" },
+    body: JSON.stringify(payload)
+  }).then(function(r){ return r.json(); });
+}
+
+/* ========= boot ========= */
+function boot(){
+  api({ action:"expense.boot" }).then(function(d){
+    if(!d || !d.ok){ showMsg("โหลดข้อมูลไม่สำเร็จ: " + ((d&&d.error)||"ไม่ทราบสาเหตุ"), false); return; }
+
+    // ผู้บันทึก
+    var u = d.user||{};
+    $("who").textContent = "ผู้บันทึก: " + (u.name||"(ไม่ระบุ)") + (u.role?(" • "+u.role):"");
+
+    // dropdown
+    opt($("project"),   d.projects||[],   function(x){return x.key;},  function(x){return x.label;});
+    opt($("category"),  d.catExpense||[],  function(x){return x;},      function(x){return x;});
+    opt($("store"),     d.stores||[],      function(x){return x.code;}, function(x){return x.name;});
+    var pays = d.payMethods||["เงินสด","โอนเงิน","เช็ค","บัตรเครดิต"];
+    opt($("pay"), pays, function(x){return x;}, function(x){return x;});
+
+    // วันที่วันนี้ (เขตเวลาไทย)
+    var now = new Date();
+    var th = new Date(now.getTime() + (now.getTimezoneOffset()+420)*60000);
+    $("date").value = th.toISOString().slice(0,10);
+
+    hide($("loading")); show($("form")); show($("bar"));
+  }).catch(function(e){
+    showMsg("เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ: " + (e.message||e) + "\n(ตรวจว่าใส่ API_URL ถูกต้อง)", false);
+  });
+}
+
+/* ========= events ========= */
+// สลับสถานะชำระ
+$("segPay").addEventListener("click", function(ev){
+  var b = ev.target.closest("button"); if(!b) return;
+  PAY_STATUS = b.getAttribute("data-v");
+  var btns = $("segPay").querySelectorAll("button");
+  for (var i=0;i<btns.length;i++) btns[i].classList.remove("on");
+  b.classList.add("on");
+  if (PAY_STATUS==="debt"){ hide($("payMethodBox")); show($("debtHint")); }
+  else { show($("payMethodBox")); hide($("debtHint")); }
+});
+
+// เพิ่มร้านใหม่
+$("addStoreBtn").addEventListener("click", function(){
+  var box=$("newStoreBox");
+  if (box.classList.contains("hide")){ show(box); $("newStore").focus(); }
+  else { hide(box); }
+});
+$("saveStoreBtn").addEventListener("click", function(){
+  var name = $("newStore").value.trim();
+  if(!name){ $("newStore").focus(); return; }
+  $("saveStoreBtn").disabled = true;
+  api({ action:"store.add", name:name }).then(function(d){
+    $("saveStoreBtn").disabled = false;
+    if(!d.ok){ showMsg("เพิ่มร้านไม่สำเร็จ: "+d.error, false); return; }
+    var o=document.createElement("option");
+    o.value=d.store.code; o.textContent=d.store.name;
+    $("store").appendChild(o); $("store").value=d.store.code;
+    $("newStore").value=""; hide($("newStoreBox"));
+  }).catch(function(e){ $("saveStoreBtn").disabled=false; showMsg("เพิ่มร้านไม่สำเร็จ: "+(e.message||e), false); });
+});
+
+// บันทึก
+$("submitBtn").addEventListener("click", function(){
+  var project=$("project").value, category=$("category").value;
+  var amount=($("amount").value||"").replace(/,/g,"").trim();
+  if(!project){ showMsg("กรุณาเลือกโครงการ", false); return; }
+  if(!category){ showMsg("กรุณาเลือกหมวดหมู่", false); return; }
+  if(!amount || parseFloat(amount)<=0){ showMsg("กรุณากรอกจำนวนเงินให้ถูกต้อง", false); return; }
+
+  $("submitBtn").disabled=true; $("submitBtn").textContent="กำลังบันทึก…";
+  api({
+    action:"expense.save",
+    project:project, date:$("date").value, category:category,
+    store:$("store").value, storeCode:$("store").value,
+    billNo:$("billNo").value, item:$("item").value, amount:amount,
+    payStatus:(PAY_STATUS==="debt"?"ค้างชำระ":"ชำระแล้ว"),
+    pay:(PAY_STATUS==="debt"?"":$("pay").value)
+  }).then(function(d){
+    $("submitBtn").disabled=false; $("submitBtn").textContent="บันทึกค่าใช้จ่าย";
+    if(!d.ok){ showMsg("บันทึกไม่สำเร็จ: "+d.error, false); return; }
+    showMsg(d.message, true);
+    // เคลียร์ช่องที่ควรกรอกใหม่ (คงโครงการ/วันที่ไว้ให้บันทึกต่อได้เร็ว)
+    $("billNo").value=""; $("item").value=""; $("amount").value="";
+  }).catch(function(e){
+    $("submitBtn").disabled=false; $("submitBtn").textContent="บันทึกค่าใช้จ่าย";
+    showMsg("บันทึกไม่สำเร็จ: "+(e.message||e), false);
+  });
+});
+
+/* ========= start (LIFF) ========= */
+function start(){
+  if (!LIFF_ID){ showMsg("ยังไม่ได้ตั้งค่า LIFF_ID", false); return; }
+  liff.init({ liffId: LIFF_ID }).then(function(){
+    if (!liff.isLoggedIn()){ liff.login(); return; }
+    TOKEN = liff.getAccessToken() || "";
+    if (!TOKEN){ showMsg("ไม่พบ access token — กรุณาเปิดฟอร์มนี้ผ่านแอป LINE", false); return; }
+    boot();
+  }).catch(function(e){
+    showMsg("เริ่มระบบ LINE ไม่สำเร็จ: " + (e.message||e), false);
+  });
+}
+window.addEventListener("load", start);
+</script>
+</body>
+</html>
