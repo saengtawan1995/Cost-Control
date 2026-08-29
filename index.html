@@ -51,6 +51,9 @@
   }
   .btn:active{background:var(--red-d)}
   .btn:disabled{background:#cbd5e1; cursor:not-allowed}
+  .btn2{width:100%; padding:15px; font-size:17px; font-weight:700; color:var(--red);
+    background:#fff; border:2px solid var(--red); border-radius:12px; cursor:pointer;}
+  .btn2:active{background:#fee2e2}
   .msg{padding:14px; border-radius:10px; margin:0 0 12px; font-size:14px; white-space:pre-line; display:none}
   .msg.ok{background:#dcfce7; color:#166534; display:block}
   .msg.err{background:#fee2e2; color:#991b1b; display:block}
@@ -141,6 +144,15 @@
       <select id="pay"></select>
     </div>
     <div id="debtHint" class="hint hide">💡 ค้างชำระ: จะไปบันทึกวิธีชำระตอนจ่ายจริงภายหลัง</div>
+  </div>
+
+  <!-- หน้ายืนยันหลังบันทึกสำเร็จ -->
+  <div id="done" class="card hide" style="text-align:center">
+    <div style="font-size:52px;line-height:1">✅</div>
+    <div style="font-weight:700;font-size:20px;margin:8px 0 4px">บันทึกสำเร็จ</div>
+    <div id="doneDetail" class="hint" style="font-size:14px;margin-bottom:18px">—</div>
+    <button type="button" class="btn" id="againBtn">➕ บันทึกรายการอื่นต่อ</button>
+    <button type="button" class="btn2" id="closeBtn" style="margin-top:10px">✖ ปิดหน้านี้</button>
   </div>
 </div>
 
@@ -314,15 +326,41 @@ $("submitBtn").addEventListener("click", function(){
     payStatus:(PAY_STATUS==="debt"?"ค้างชำระ":"ชำระแล้ว"),
     pay:(PAY_STATUS==="debt"?"":$("pay").value)
   }).then(function(d){
-    $("submitBtn").disabled=false; $("submitBtn").textContent="บันทึกค่าใช้จ่าย";
-    if(!d.ok){ showMsg("บันทึกไม่สำเร็จ: "+d.error, false); return; }
-    showMsg(d.message, true);
-    // เคลียร์ช่องที่ควรกรอกใหม่ (คงโครงการ/วันที่ไว้ให้บันทึกต่อได้เร็ว)
-    $("billNo").value=""; $("item").value=""; $("amount").value="";
+    if(!d.ok){
+      $("submitBtn").disabled=false; $("submitBtn").textContent="บันทึกค่าใช้จ่าย";
+      showMsg("บันทึกไม่สำเร็จ: "+d.error, false); return;
+    }
+    // สำเร็จ → ล็อกฟอร์ม แล้วขึ้นหน้ายืนยันให้เลือกทำต่อ/ปิด
+    var amt = parseFloat(amount).toLocaleString("th-TH",{minimumFractionDigits:2,maximumFractionDigits:2});
+    var pjTxt = $("project").options[$("project").selectedIndex].textContent;
+    $("doneDetail").textContent = pjTxt + " • " + category + " • ฿" + amt;
+    hide($("msg"));
+    hide($("form")); hide($("bar")); show($("done"));
+    window.scrollTo(0,0);
   }).catch(function(e){
     $("submitBtn").disabled=false; $("submitBtn").textContent="บันทึกค่าใช้จ่าย";
     showMsg("บันทึกไม่สำเร็จ: "+(e.message||e), false);
   });
+});
+
+// บันทึกรายการอื่นต่อ → เคลียร์เฉพาะช่องรายการ (คงโครงการ/วันที่ไว้) แล้วกลับมาที่ฟอร์ม
+$("againBtn").addEventListener("click", function(){
+  $("billNo").value=""; $("item").value=""; $("amount").value="";
+  $("store").value=""; $("category").value="";
+  $("submitBtn").disabled=false; $("submitBtn").textContent="บันทึกค่าใช้จ่าย";
+  hide($("done")); show($("form")); show($("bar"));
+  $("msg").className="msg"; // ซ่อนข้อความ
+  window.scrollTo(0,0);
+});
+
+// ปิดหน้านี้ → ปิดหน้าต่าง LIFF (ถ้าเปิดนอกไลน์จะซ่อนหน้าแทน)
+$("closeBtn").addEventListener("click", function(){
+  try{
+    if (window.liff && liff.closeWindow){ liff.closeWindow(); }
+  }catch(e){}
+  $("done").innerHTML = '<div style="font-size:52px">👋</div>'
+    + '<div style="font-weight:700;font-size:18px;margin-top:8px">ปิดหน้านี้ได้เลยค่ะ</div>'
+    + '<div class="hint" style="margin-top:6px">บันทึกเรียบร้อยแล้ว</div>';
 });
 
 /* ========= start (LIFF) ========= */
