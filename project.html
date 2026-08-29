@@ -138,6 +138,9 @@
 
         <label>หน่วยงาน / เจ้าของงาน</label>
         <input type="text" id="owner" placeholder="เช่น เทศบาลตำบลจุน" />
+
+        <label>รายละเอียดโครงการ (ถ้ามี)</label>
+        <textarea id="detail" placeholder="เช่น เลขที่สัญญา, ขอบเขตงาน, สถานที่, หมายเหตุ"></textarea>
       </div>
       <button type="button" class="btn" id="openBtn">✔ เปิดโครงการ</button>
     </div>
@@ -352,7 +355,8 @@ $("openBtn").addEventListener("click", function(){
     name:name, abbr:($("abbr").value||"").trim(),
     start:start, deadline:$("deadline").value,
     budget:($("budget").value||"").replace(/,/g,"").trim(),
-    owner:($("owner").value||"").trim() })
+    owner:($("owner").value||"").trim(),
+    detail:($("detail").value||"").trim() })
   .then(function(d){
     $("openBtn").disabled=false; $("openBtn").textContent="✔ เปิดโครงการ";
     if(!d.ok){ showMsg("เปิดโครงการไม่สำเร็จ: "+d.error, false); return; }
@@ -441,7 +445,7 @@ function showDone(kind, detail){
 $("moreBtn").addEventListener("click", function(){
   // reset ทั้งสองฟอร์ม + โหลดโครงการใหม่ (ยอด/สถานะอัปเดตแล้ว)
   $("name").value=""; $("abbr").value=""; $("start").value=""; $("deadline").value="";
-  $("budget").value=""; $("owner").value=""; hide($("codeBox"));
+  $("budget").value=""; $("owner").value=""; $("detail").value=""; hide($("codeBox"));
   updateDateUI("start"); updateDateUI("deadline");
   $("project").innerHTML='<option value="">— เลือกโครงการ —</option>';
   ["cfDeliver","cfChecklist","cfCost","cfReceivable"].forEach(function(id){ $(id).checked=false; });
