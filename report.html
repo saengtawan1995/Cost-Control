@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>รายงานสรุปต้นทุน • แสงตะวัน</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root{
+    --rp:#334155; --rp-d:#1e293b; --ink:#1e293b; --mut:#64748b;
+    --line:#e2e8f0; --bg:#f1f5f9; --red:#E02424; --grn:#16a34a; --org:#ea580c; --blu:#2563eb;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,"Segoe UI","Sarabun",Roboto,sans-serif;
+    background:var(--bg); color:var(--ink); font-size:16px; line-height:1.5;
+    padding:0 0 40px;
+  }
+  .hd{
+    background:var(--rp); color:#fff; padding:16px 18px;
+    display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:5;
+  }
+  .hd .ic{font-size:22px}
+  .hd .tt{font-weight:700; font-size:18px}
+  .who{font-size:13px; color:#cbd5e1; margin-top:2px}
+  .wrap{max-width:560px; margin:0 auto; padding:14px}
+  .card{background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px}
+  label{display:block; font-weight:600; font-size:14px; margin:0 0 6px}
+  label .req{color:var(--red)}
+  select{
+    width:100%; padding:12px 14px; font-size:16px; border:1px solid var(--line);
+    border-radius:10px; background:#fff; color:var(--ink); font-family:inherit;
+  }
+  select:focus{outline:none; border-color:var(--rp)}
+  .hint{font-size:12px; color:var(--mut); margin-top:4px}
+  .btn{
+    width:100%; padding:15px; font-size:17px; font-weight:700; color:#fff;
+    background:var(--rp); border:none; border-radius:12px; cursor:pointer;
+  }
+  .btn:active{background:var(--rp-d)}
+  .btn:disabled{background:#cbd5e1; cursor:not-allowed}
+  .btn2{width:100%; padding:15px; font-size:17px; font-weight:700; color:var(--rp);
+    background:#fff; border:2px solid var(--rp); border-radius:12px; cursor:pointer;}
+  .btn2:active{background:#e2e8f0}
+  .msg{padding:14px; border-radius:10px; margin:0 0 12px; font-size:14px; white-space:pre-line; display:none}
+  .msg.ok{background:#dcfce7; color:#166534; display:block}
+  .msg.err{background:#fee2e2; color:#991b1b; display:block}
+  .center{text-align:center; color:var(--mut); padding:40px 20px}
+  .hide{display:none !important}
+  /* การ์ดสรุป */
+  .rpTitle{font-weight:700; font-size:17px; margin-bottom:2px}
+  .rpTag{display:inline-block; font-size:12px; font-weight:600; padding:2px 9px; border-radius:20px; margin-bottom:12px}
+  .rpTag.act{background:#dbeafe; color:#1d4ed8}
+  .rpTag.cls{background:#e2e8f0; color:#475569}
+  .stat{display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--line)}
+  .stat:last-of-type{border-bottom:none}
+  .stat .k{font-size:14px; color:var(--mut); display:flex; align-items:center; gap:7px}
+  .stat .v{font-size:19px; font-weight:700}
+  .stat .v .u{font-size:12px; color:var(--mut); font-weight:500; margin-left:3px}
+  .v.grn{color:var(--grn)} .v.org{color:var(--org)} .v.blu{color:var(--blu)} .v.red{color:var(--red)}
+  .pct{font-size:13px; font-weight:600; margin-left:6px}
+  .warn{background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:10px; padding:10px 12px; font-size:13px; margin-top:12px}
+  .asof{font-size:12px; color:var(--mut); text-align:right; margin-top:12px}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <span class="ic">📊</span>
+  <div>
+    <div class="tt">รายงานสรุปต้นทุน</div>
+    <div class="who" id="who">กำลังโหลด…</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="msg" class="msg"></div>
+
+  <!-- หน้าโหลด -->
+  <div id="loading" class="center">⏳ กำลังโหลดข้อมูล…</div>
+
+  <!-- เลือกโครงการ -->
+  <div id="view" class="hide">
+    <div class="card">
+      <label>โครงการ <span class="req">*</span></label>
+      <select id="project"><option value="">— เลือกโครงการ —</option></select>
+      <div class="hint">เลือกโครงการเพื่อดูสรุป รับ/จ่าย/กำไร/ค้างจ่าย</div>
+    </div>
+
+    <div id="repLoading" class="center hide">⏳ กำลังคำนวณ…</div>
+
+    <!-- การ์ดสรุป -->
+    <div id="repCard" class="card hide">
+      <div class="rpTitle" id="rTitle">—</div>
+      <span class="rpTag" id="rTag"></span>
+      <div class="stat">
+        <div class="k">💰 รายรับ</div>
+        <div class="v grn" id="rIncome">—<span class="u">บาท</span></div>
+      </div>
+      <div class="stat">
+        <div class="k">💸 รายจ่าย (ต้นทุน)</div>
+        <div class="v org" id="rExpense">—<span class="u">บาท</span></div>
+      </div>
+      <div class="stat">
+        <div class="k">📈 กำไร</div>
+        <div><span class="v" id="rProfit">—</span><span class="u" style="font-size:12px;color:var(--mut)"> บาท</span><span class="pct" id="rPct"></span></div>
+      </div>
+      <div class="stat">
+        <div class="k">⏳ ค้างจ่ายเครดิต</div>
+        <div class="v" id="rCredit">—<span class="u">บาท</span></div>
+      </div>
+      <div id="rWarn" class="warn hide"></div>
+      <div class="asof" id="rAsOf"></div>
+    </div>
+
+    <!-- ปุ่มส่งเข้าแชท -->
+    <button type="button" class="btn2" id="sendBtn" style="display:none">💬 ส่งสรุปเข้าแชท LINE</button>
+  </div>
+</div>
+
+<script>
+/* ========= ตั้งค่า ========= */
+// ★★ วาง LIFF ID ของฟอร์มรายงาน (LIFF ที่ 4) ที่นี่ ★★
+var LIFF_ID = "2011277267-Ey49MUc9";
+var API_URL = "https://script.google.com/macros/s/AKfycbyyhj02NSB6JRWBAX8DEArox-ScQEGZ5MsKdyIV0ymYswEqifKSqqIIIciTpisTtNsg3Q/exec";
+
+/* ========= state ========= */
+var TOKEN = "";
+var CUR = null;   // report ปัจจุบัน (สำหรับปุ่มส่งเข้าแชท)
+
+/* ========= helpers ========= */
+function $(id){ return document.getElementById(id); }
+function show(el){ el.classList.remove("hide"); }
+function hide(el){ el.classList.add("hide"); }
+function showMsg(text, ok){
+  var m = $("msg");
+  m.textContent = text; m.className = "msg " + (ok ? "ok" : "err");
+  window.scrollTo(0,0);
+}
+function hideMsg(){ $("msg").className="msg"; }
+function fmt(n){ return (parseFloat(n)||0).toLocaleString("th-TH",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function opt(sel, arr, getV, getT){
+  for (var i=0;i<arr.length;i++){
+    var o=document.createElement("option");
+    o.value=getV(arr[i]); o.textContent=getT(arr[i]); sel.appendChild(o);
+  }
+}
+function api(payload){
+  payload.accessToken = TOKEN;
+  return fetch(API_URL, {
+    method:"POST",
+    headers:{ "Content-Type":"text/plain;charset=utf-8" },
+    body: JSON.stringify(payload)
+  }).then(function(r){ return r.json(); });
+}
+
+/* ========= boot ========= */
+function boot(){
+  api({ action:"report.boot" }).then(function(d){
+    if(!d || !d.ok){ showMsg("โหลดข้อมูลไม่สำเร็จ: " + ((d&&d.error)||"ไม่ทราบสาเหตุ"), false); hide($("loading")); return; }
+    var u = d.user||{};
+    $("who").textContent = "ผู้ใช้: " + (u.name||"(ไม่ระบุ)") + (u.role?(" • "+u.role):"");
+    var projs = d.projects||[];
+    if(!projs.length){
+      hide($("loading")); show($("view"));
+      $("project").parentNode.classList.add("hide");
+      showMsg("ยังไม่มีโครงการในระบบ", false);
+      return;
+    }
+    opt($("project"), projs, function(x){return x.key;}, function(x){return x.label;});
+    hide($("loading")); show($("view"));
+  }).catch(function(e){
+    hide($("loading"));
+    showMsg("เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ: " + (e.message||e), false);
+  });
+}
+
+/* ========= โหลดรายงานของโครงการ ========= */
+function loadReport(){
+  var project=$("project").value;
+  hide($("repCard")); $("sendBtn").style.display="none"; hideMsg(); CUR=null;
+  if(!project){ return; }
+  show($("repLoading"));
+  api({ action:"report.get", project:project }).then(function(d){
+    hide($("repLoading"));
+    if(!d.ok){ showMsg("โหลดรายงานไม่สำเร็จ: "+d.error, false); return; }
+    render(d.report);
+  }).catch(function(e){
+    hide($("repLoading")); showMsg("โหลดรายงานไม่สำเร็จ: "+(e.message||e), false);
+  });
+}
+
+function render(r){
+  CUR = r;
+  $("rTitle").textContent = r.label || r.key;
+  var isClosed = /\(ปิดแล้ว\)/.test(r.label||"");
+  var tag=$("rTag");
+  tag.textContent = isClosed ? "ปิดโครงการแล้ว" : "กำลังดำเนินการ";
+  tag.className = "rpTag " + (isClosed ? "cls" : "act");
+
+  $("rIncome").innerHTML  = fmt(r.income)  + '<span class="u"> บาท</span>';
+  $("rExpense").innerHTML = fmt(r.expense) + '<span class="u"> บาท</span>';
+
+  var prof=$("rProfit");
+  prof.textContent = fmt(r.profit);
+  prof.className = "v " + (r.profit < 0 ? "red" : "blu");
+  var pct=$("rPct");
+  pct.textContent = "(" + (parseFloat(r.marginPct)||0).toFixed(1) + "%)";
+  pct.style.color = (r.profit < 0 ? "var(--red)" : "var(--grn)");
+
+  var cred=$("rCredit");
+  cred.innerHTML = fmt(r.creditOutstanding) + '<span class="u"> บาท</span>';
+  cred.className = "v " + ((parseFloat(r.creditOutstanding)||0) > 0 ? "org" : "grn");
+
+  var w=$("rWarn");
+  if((parseFloat(r.creditOutstanding)||0) > 0){
+    w.textContent = "⚠ ยังมีค้างจ่ายเครดิต " + fmt(r.creditOutstanding) + " บาท"
+      + (r.outstandingCount ? (" (" + r.outstandingCount + " รายการ)") : "")
+      + " — เคลียร์ที่เมนูจ่ายเจ้าหนี้ก่อนปิดงาน";
+    show(w);
+  } else { hide(w); }
+
+  var now = new Date(Date.now()+7*3600000);
+  $("rAsOf").textContent = "ณ " + now.getUTCDate() + "/" + (now.getUTCMonth()+1) + "/"
+    + (now.getUTCFullYear()+543) + " " + ("0"+now.getUTCHours()).slice(-2) + ":" + ("0"+now.getUTCMinutes()).slice(-2);
+
+  show($("repCard"));
+  // ปุ่มส่งเข้าแชท: แสดงเฉพาะเมื่อเปิดผ่านแอป LINE
+  var inClient=false;
+  try{ inClient = (window.liff && liff.isInClient && liff.isInClient()); }catch(e){}
+  $("sendBtn").style.display = inClient ? "block" : "none";
+  window.scrollTo(0,0);
+}
+
+/* ========= ส่งสรุปเข้าแชท LINE ========= */
+$("sendBtn").addEventListener("click", function(){
+  if(!CUR || !CUR.text){ return; }
+  var btn=$("sendBtn"); btn.disabled=true; btn.textContent="กำลังส่ง…";
+  try{
+    liff.sendMessages([{ type:"text", text: CUR.text }]).then(function(){
+      showMsg("ส่งสรุปเข้าแชทเรียบร้อย ✅ ปิดหน้านี้เพื่อดูในแชทได้เลย", true);
+      btn.disabled=false; btn.textContent="💬 ส่งสรุปเข้าแชท LINE";
+    }).catch(function(e){
+      showMsg("ส่งเข้าแชทไม่สำเร็จ: " + (e.message||e), false);
+      btn.disabled=false; btn.textContent="💬 ส่งสรุปเข้าแชท LINE";
+    });
+  }catch(e){
+    showMsg("ส่งเข้าแชทไม่สำเร็จ: " + (e.message||e), false);
+    btn.disabled=false; btn.textContent="💬 ส่งสรุปเข้าแชท LINE";
+  }
+});
+
+$("project").addEventListener("change", loadReport);
+
+/* ========= start (LIFF) ========= */
+function start(){
+  if (!LIFF_ID || LIFF_ID==="PASTE_REPORT_LIFF_ID"){ showMsg("ยังไม่ได้ตั้งค่า LIFF_ID (แก้ตัวแปร LIFF_ID ในไฟล์ report.html)", false); hide($("loading")); return; }
+  liff.init({ liffId: LIFF_ID }).then(function(){
+    if (!liff.isLoggedIn()){ liff.login(); return; }
+    TOKEN = liff.getAccessToken() || "";
+    if (!TOKEN){ showMsg("ไม่พบ access token — กรุณาเปิดฟอร์มนี้ผ่านแอป LINE", false); hide($("loading")); return; }
+    boot();
+  }).catch(function(e){
+    hide($("loading"));
+    showMsg("เริ่มระบบ LINE ไม่สำเร็จ: " + (e.message||e), false);
+  });
+}
+window.addEventListener("load", start);
+</script>
+</body>
+</html>
