@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>จ่ายเจ้าหนี้ • แสงตะวัน</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root{
+    --pay:#ea580c; --pay-d:#c2410c; --ink:#1e293b; --mut:#64748b;
+    --line:#e2e8f0; --bg:#f1f5f9; --red:#E02424; --grn:#16a34a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,"Segoe UI","Sarabun",Roboto,sans-serif;
+    background:var(--bg); color:var(--ink); font-size:16px; line-height:1.5;
+    padding:0 0 40px;
+  }
+  .hd{
+    background:var(--pay); color:#fff; padding:16px 18px;
+    display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:5;
+  }
+  .hd .ic{font-size:22px}
+  .hd .tt{font-weight:700; font-size:18px}
+  .who{font-size:13px; color:#ffedd5; margin-top:2px}
+  .wrap{max-width:560px; margin:0 auto; padding:14px}
+  .card{background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px}
+  label{display:block; font-weight:600; font-size:14px; margin:12px 0 6px}
+  label .req{color:var(--red)}
+  input,select,textarea{
+    width:100%; padding:12px 14px; font-size:16px; border:1px solid var(--line);
+    border-radius:10px; background:#fff; color:var(--ink); font-family:inherit;
+  }
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--pay)}
+  .row{display:flex; gap:10px}
+  .row>*{flex:1}
+  .hint{font-size:12px; color:var(--mut); margin-top:4px}
+  .btn{
+    width:100%; padding:15px; font-size:17px; font-weight:700; color:#fff;
+    background:var(--pay); border:none; border-radius:12px; cursor:pointer;
+  }
+  .btn:active{background:var(--pay-d)}
+  .btn:disabled{background:#cbd5e1; cursor:not-allowed}
+  .btn2{width:100%; padding:15px; font-size:17px; font-weight:700; color:var(--pay);
+    background:#fff; border:2px solid var(--pay); border-radius:12px; cursor:pointer;}
+  .btn2:active{background:#ffedd5}
+  .msg{padding:14px; border-radius:10px; margin:0 0 12px; font-size:14px; white-space:pre-line; display:none}
+  .msg.ok{background:#dcfce7; color:#166534; display:block}
+  .msg.err{background:#fee2e2; color:#991b1b; display:block}
+  .center{text-align:center; color:var(--mut); padding:40px 20px}
+  .hide{display:none !important}
+  .amount{font-size:22px; font-weight:700; text-align:right}
+  /* การ์ดรายการค้างชำระ */
+  .db{border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px; background:#fff}
+  .db .ven{font-weight:700; font-size:16px; color:var(--pay); display:flex; align-items:center; gap:5px}
+  .db .t{font-weight:600; font-size:14px; margin-top:3px}
+  .db .s{font-size:12px; color:var(--mut); margin-top:2px}
+  .db .amts{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap}
+  .db .a{flex:1; min-width:92px; background:#f8fafc; border-radius:9px; padding:8px 10px}
+  .db .a .k{font-size:11px; color:var(--mut)}
+  .db .a .v{font-weight:700; font-size:15px}
+  .db .a.rem{background:#fff7ed}
+  .db .a.rem .v{color:var(--pay)}
+  .db .payBtn{width:100%; margin-top:12px; padding:11px; font-size:15px; font-weight:700; color:#fff; background:var(--pay); border:none; border-radius:10px}
+  .sumline{font-size:13px; color:var(--mut); margin:2px 0 10px}
+  /* ปฏิทินไทย */
+  .datebtn{width:100%;text-align:left;padding:12px 14px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;font-size:16px;color:var(--ink);}
+  .cal{margin-top:8px;border:1px solid #e2e8f0;border-radius:14px;padding:12px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.12);}
+  .cal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .cal-hd button{border:none;background:#f1f5f9;border-radius:10px;width:40px;height:40px;font-size:22px;line-height:1;color:var(--pay);}
+  #calTitle{font-weight:700;font-size:16px;color:var(--ink);}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .cal-dow div{text-align:center;font-size:12px;color:var(--mut);padding:4px 0;}
+  .cal-day{text-align:center;padding:10px 0;border-radius:10px;font-size:15px;cursor:pointer;color:var(--ink);}
+  .cal-day.mut{color:transparent;cursor:default;}
+  .cal-day.sel{background:var(--pay);color:#fff;font-weight:700;}
+  .cal-day.today{border:1px solid var(--pay);}
+  .cal-foot{margin-top:8px;text-align:right;}
+  .cal-foot button{border:none;background:#f1f5f9;border-radius:10px;padding:8px 16px;color:var(--pay);font-weight:600;}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <span class="ic">💸</span>
+  <div>
+    <div class="tt">จ่ายเจ้าหนี้</div>
+    <div class="who" id="who">กำลังโหลด…</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="msg" class="msg"></div>
+
+  <!-- หน้าโหลด -->
+  <div id="loading" class="center">⏳ กำลังโหลดข้อมูล…</div>
+
+  <!-- เลือกโครงการ + รายการค้างชำระ -->
+  <div id="listView" class="hide">
+    <div class="card">
+      <label>โครงการ <span class="req">*</span></label>
+      <select id="project"><option value="">— เลือกโครงการที่มีค้างชำระ —</option></select>
+      <div class="sumline" id="projSum"></div>
+    </div>
+    <div id="listLoading" class="center hide">⏳ กำลังโหลดรายการค้างชำระ…</div>
+    <div id="list"></div>
+    <div id="listEmpty" class="center hide">🎉 ไม่มีรายการค้างชำระในโครงการนี้</div>
+  </div>
+
+  <!-- แผงจ่ายเงิน -->
+  <div id="payView" class="card hide">
+    <div style="font-weight:700;font-size:16px" id="pTitle">—</div>
+    <div class="hint" id="pSub" style="margin-bottom:4px">—</div>
+    <div class="a rem" style="background:#fff7ed;border-radius:9px;padding:10px 12px;margin:10px 0">
+      <div style="font-size:12px;color:var(--mut)">ยอดคงเหลือ</div>
+      <div style="font-weight:700;font-size:20px;color:var(--pay)" id="pRemain">—</div>
+    </div>
+
+    <label>จำนวนที่จ่ายจริง (เงินสด/โอน) <span class="req">*</span></label>
+    <input type="text" id="payAmt" class="amount" inputmode="decimal" placeholder="0.00" />
+
+    <label>ส่วนลด (ถ้ามี)</label>
+    <input type="text" id="discAmt" class="amount" inputmode="decimal" placeholder="0.00" />
+
+    <button type="button" class="btn2" id="fullBtn" style="margin-top:8px;padding:10px;font-size:15px">จ่ายจริงเต็มยอดคงเหลือ</button>
+
+    <div id="payCalc" style="background:#f0fdf4;border-radius:9px;padding:9px 12px;margin:10px 0;font-size:13px;color:#166534;line-height:1.5">—</div>
+
+    <label>วิธีชำระ</label>
+    <select id="payMethod"></select>
+
+    <label>วันที่จ่าย <span class="req">*</span></label>
+    <button type="button" id="dateBtn" class="datebtn">— เลือกวันที่ —</button>
+    <input type="hidden" id="date" />
+    <div id="cal" class="cal hide">
+      <div class="cal-hd">
+        <button type="button" id="calPrev">‹</button>
+        <div id="calTitle">—</div>
+        <button type="button" id="calNext">›</button>
+      </div>
+      <div class="cal-grid cal-dow" id="calDow"></div>
+      <div class="cal-grid" id="calDays"></div>
+      <div class="cal-foot"><button type="button" id="calToday">วันนี้</button></div>
+    </div>
+
+    <button type="button" class="btn" id="confirmBtn" style="margin-top:16px">✔ ยืนยันการจ่าย</button>
+    <button type="button" class="btn2" id="cancelBtn" style="margin-top:10px">‹ กลับไปรายการ</button>
+  </div>
+
+  <!-- หน้ายืนยันหลังจ่ายสำเร็จ -->
+  <div id="done" class="card hide" style="text-align:center">
+    <div style="font-size:52px;line-height:1">✅</div>
+    <div style="font-weight:700;font-size:20px;margin:8px 0 4px">บันทึกการจ่ายสำเร็จ</div>
+    <div id="doneDetail" class="hint" style="font-size:14px;margin-bottom:18px">—</div>
+    <button type="button" class="btn" id="moreBtn">➕ จ่ายรายการอื่นต่อ</button>
+    <button type="button" class="btn2" id="closeBtn" style="margin-top:10px">✖ ปิดหน้านี้</button>
+  </div>
+</div>
+
+<script>
+/* ========= ตั้งค่า ========= */
+// ★★ วาง LIFF ID ของฟอร์มจ่ายเจ้าหนี้ (LIFF ที่ 3) ที่นี่ ★★
+var LIFF_ID = "PASTE_PAY_LIFF_ID";
+var API_URL = "https://script.google.com/macros/s/AKfycbyyhj02NSB6JRWBAX8DEArox-ScQEGZ5MsKdyIV0ymYswEqifKSqqIIIciTpisTtNsg3Q/exec";
+
+/* ========= state ========= */
+var TOKEN = "";
+var PAYS = ["เงินสด","โอนเงิน","เช็ค","บัตรเครดิต"];
+var CUR = null;   // รายการที่กำลังจ่าย {row, remaining, ...}
+
+/* ========= helpers ========= */
+function $(id){ return document.getElementById(id); }
+function show(el){ el.classList.remove("hide"); }
+function hide(el){ el.classList.add("hide"); }
+function showMsg(text, ok){
+  var m = $("msg");
+  m.textContent = text; m.className = "msg " + (ok ? "ok" : "err");
+  window.scrollTo(0,0);
+}
+function hideMsg(){ $("msg").className="msg"; }
+function fmt(n){ return (parseFloat(n)||0).toLocaleString("th-TH",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+function opt(sel, arr, getV, getT){
+  for (var i=0;i<arr.length;i++){
+    var o=document.createElement("option");
+    o.value=getV(arr[i]); o.textContent=getT(arr[i]); sel.appendChild(o);
+  }
+}
+function api(payload){
+  payload.accessToken = TOKEN;
+  return fetch(API_URL, {
+    method:"POST",
+    headers:{ "Content-Type":"text/plain;charset=utf-8" },
+    body: JSON.stringify(payload)
+  }).then(function(r){ return r.json(); });
+}
+
+/* ===== ปฏิทินไทย — #date เก็บ ค.ศ. yyyy-mm-dd ===== */
+var TH_MONTHS=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+var TH_DOW=["อา","จ","อ","พ","พฤ","ศ","ส"];
+var calY, calM;
+function pad2(n){ return (n<10?"0":"")+n; }
+function isoOf(y,m,d){ return y+"-"+pad2(m+1)+"-"+pad2(d); }
+function thaiDate(iso){
+  if(!iso) return "";
+  var p = iso.split("-"); if(p.length!==3) return "";
+  return parseInt(p[2],10) + " " + TH_MONTHS[parseInt(p[1],10)-1] + " " + (parseInt(p[0],10)+543);
+}
+function updateDateUI(){
+  var v = $("date").value;
+  $("dateBtn").textContent = v ? thaiDate(v) : "— เลือกวันที่ —";
+}
+function renderCal(){
+  $("calTitle").textContent = TH_MONTHS[calM] + " " + (calY+543);
+  var dow=$("calDow"); dow.innerHTML="";
+  for(var i=0;i<7;i++){ var e=document.createElement("div"); e.textContent=TH_DOW[i]; dow.appendChild(e); }
+  var days=$("calDays"); days.innerHTML="";
+  var first=new Date(calY,calM,1).getDay();
+  var dim=new Date(calY,calM+1,0).getDate();
+  var sel=$("date").value;
+  var t=new Date(); var todayIso=isoOf(t.getFullYear(),t.getMonth(),t.getDate());
+  for(var i=0;i<first;i++){ var b=document.createElement("div"); b.className="cal-day mut"; days.appendChild(b); }
+  for(var dd=1;dd<=dim;dd++){
+    var iso=isoOf(calY,calM,dd);
+    var c=document.createElement("div"); c.className="cal-day"; c.textContent=dd;
+    if(iso===sel) c.className+=" sel";
+    if(iso===todayIso) c.className+=" today";
+    (function(x){ c.addEventListener("click",function(){ $("date").value=x; updateDateUI(); hide($("cal")); }); })(iso);
+    days.appendChild(c);
+  }
+}
+function openCal(){
+  var v=$("date").value; var d = v ? new Date(v+"T00:00:00") : new Date();
+  calY=d.getFullYear(); calM=d.getMonth();
+  renderCal(); show($("cal"));
+}
+
+/* ========= boot ========= */
+function boot(){
+  api({ action:"pay.boot" }).then(function(d){
+    if(!d || !d.ok){ showMsg("โหลดข้อมูลไม่สำเร็จ: " + ((d&&d.error)||"ไม่ทราบสาเหตุ"), false); return; }
+    var u = d.user||{};
+    $("who").textContent = "ผู้บันทึก: " + (u.name||"(ไม่ระบุ)") + (u.role?(" • "+u.role):"");
+    PAYS = d.payMethods||PAYS;
+    opt($("payMethod"), PAYS, function(x){return x;}, function(x){return x;});
+
+    var projs = d.projects||[];
+    if(!projs.length){
+      hide($("loading"));
+      $("listView").classList.remove("hide");
+      $("project").parentNode.classList.add("hide");
+      show($("listEmpty")); $("listEmpty").innerHTML="🎉 ไม่มีรายการค้างชำระในตอนนี้";
+      return;
+    }
+    opt($("project"), projs, function(x){return x.key;},
+      function(x){ return x.label + " — ค้าง ฿" + fmt(x.outstanding) + " (" + x.count + " รายการ)"; });
+
+    hide($("loading")); show($("listView"));
+  }).catch(function(e){
+    showMsg("เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ: " + (e.message||e), false);
+  });
+}
+
+/* ========= โหลดรายการค้างของโครงการ ========= */
+function loadList(){
+  var project=$("project").value;
+  $("list").innerHTML=""; hide($("listEmpty")); $("projSum").textContent="";
+  if(!project){ return; }
+  show($("listLoading"));
+  api({ action:"pay.list", project:project }).then(function(d){
+    hide($("listLoading"));
+    if(!d.ok){ showMsg("โหลดรายการไม่สำเร็จ: "+d.error, false); return; }
+    var items=d.items||[];
+    if(!items.length){ show($("listEmpty")); return; }
+    var total=0;
+    for(var i=0;i<items.length;i++) total+=items[i].remaining;
+    $("projSum").textContent = "ค้างชำระรวม ฿" + fmt(total) + " • " + items.length + " รายการ";
+    renderList(items);
+  }).catch(function(e){
+    hide($("listLoading")); showMsg("โหลดรายการไม่สำเร็จ: "+(e.message||e), false);
+  });
+}
+function renderList(items){
+  var box=$("list"); box.innerHTML="";
+  for(var i=0;i<items.length;i++){
+    (function(it){
+      var el=document.createElement("div"); el.className="db";
+      var titleTxt = (it.category||"") + (it.item?(" · "+it.item):"");
+      var subParts=[];
+      if(it.dateIso) subParts.push(thaiDate(it.dateIso));
+      if(it.billNo) subParts.push("เลขที่ "+it.billNo);
+      var venTxt = it.vendor ? esc(it.vendor) : "ไม่ระบุเจ้าหนี้";
+      el.innerHTML =
+        '<div class="ven">🏪 '+ venTxt +'</div>'+
+        '<div class="t">'+ (esc(titleTxt)||"(ไม่ระบุรายการ)") +'</div>'+
+        '<div class="s">'+ subParts.join(" • ") +'</div>'+
+        '<div class="amts">'+
+          '<div class="a"><div class="k">ยอดบิล</div><div class="v">฿'+fmt(it.amount)+'</div></div>'+
+          '<div class="a"><div class="k">จ่ายแล้ว</div><div class="v">฿'+fmt(it.paid)+'</div></div>'+
+          '<div class="a rem"><div class="k">คงเหลือ</div><div class="v">฿'+fmt(it.remaining)+'</div></div>'+
+        '</div>'+
+        '<button type="button" class="payBtn">จ่าย</button>';
+      el.querySelector(".payBtn").addEventListener("click", function(){ openPay(it); });
+      box.appendChild(el);
+    })(items[i]);
+  }
+}
+
+/* ========= แผงจ่าย ========= */
+function openPay(it){
+  CUR = it;
+  $("pTitle").textContent = "🏪 " + (it.vendor || "ไม่ระบุเจ้าหนี้");
+  var sub=[];
+  var catItem = (it.category||"") + (it.item?(" · "+it.item):"");
+  if(catItem) sub.push(catItem);
+  if(it.dateIso) sub.push(thaiDate(it.dateIso));
+  if(it.billNo) sub.push("เลขที่ "+it.billNo);
+  $("pSub").textContent = sub.join(" • ");
+  $("pRemain").textContent = "฿" + fmt(it.remaining);
+  $("payAmt").value = (parseFloat(it.remaining)||0).toFixed(2);   // ตั้งต้น = จ่ายเต็ม
+  $("discAmt").value = "";                                        // ส่วนลดเริ่มต้น = 0
+  recalcPay();
+  $("payMethod").value = PAYS[0];
+  // วันที่จ่าย = วันนี้ (เขตเวลาไทย)
+  var now=new Date(); var th=new Date(now.getTime()+(now.getTimezoneOffset()+420)*60000);
+  $("date").value = th.toISOString().slice(0,10); updateDateUI(); hide($("cal"));
+  hideMsg();
+  hide($("listView")); show($("payView")); window.scrollTo(0,0);
+}
+function backToList(){
+  hide($("payView")); show($("listView")); CUR=null; window.scrollTo(0,0);
+}
+
+/* คำนวณสด: จ่ายจริง + ส่วนลด = ตัดหนี้ / คงเหลือหลังจ่าย */
+function recalcPay(){
+  if(!CUR){ return; }
+  var rem = parseFloat(CUR.remaining)||0;
+  var pay = parseFloat(($("payAmt").value||"").replace(/,/g,""))||0;
+  var disc = parseFloat(($("discAmt").value||"").replace(/,/g,""))||0;
+  var cleared = pay + disc;
+  var left = rem - cleared;
+  var box = $("payCalc");
+  if(cleared > rem + 0.005){
+    box.style.background="#fef2f2"; box.style.color="#991b1b";
+    box.textContent = "⚠ จ่ายจริง ฿"+fmt(pay)+" + ส่วนลด ฿"+fmt(disc)+" = ฿"+fmt(cleared)+" เกินยอดคงเหลือ ฿"+fmt(rem);
+  } else {
+    box.style.background="#f0fdf4"; box.style.color="#166534";
+    box.innerHTML = "ตัดหนี้ ฿"+fmt(cleared)+" (จ่าย ฿"+fmt(pay)+(disc>0?" + ส่วนลด ฿"+fmt(disc):"")+")"+
+      (left>0.005 ? " • เหลือค้าง ฿"+fmt(left) : " • <b>ปิดหนี้ครบ ✓</b>");
+  }
+}
+
+/* ========= events ========= */
+$("project").addEventListener("change", loadList);
+$("payAmt").addEventListener("input", recalcPay);
+$("discAmt").addEventListener("input", recalcPay);
+$("fullBtn").addEventListener("click", function(){
+  if(CUR){
+    var rem = parseFloat(CUR.remaining)||0;
+    var disc = parseFloat(($("discAmt").value||"").replace(/,/g,""))||0;
+    var pay = rem - disc; if(pay<0){ pay=0; }
+    $("payAmt").value = pay.toFixed(2);   // จ่ายจริง = คงเหลือ − ส่วนลด
+    recalcPay();
+  }
+});
+$("cancelBtn").addEventListener("click", backToList);
+
+// ปฏิทิน
+$("dateBtn").addEventListener("click", function(){
+  if ($("cal").classList.contains("hide")) openCal(); else hide($("cal"));
+});
+$("calPrev").addEventListener("click", function(){ calM--; if(calM<0){ calM=11; calY--; } renderCal(); });
+$("calNext").addEventListener("click", function(){ calM++; if(calM>11){ calM=0; calY++; } renderCal(); });
+$("calToday").addEventListener("click", function(){
+  var t=new Date(); $("date").value=isoOf(t.getFullYear(),t.getMonth(),t.getDate());
+  updateDateUI(); hide($("cal"));
+});
+
+// ยืนยันการจ่าย
+$("confirmBtn").addEventListener("click", function(){
+  if(!CUR){ return; }
+  var amt=($("payAmt").value||"").replace(/,/g,"").trim();
+  var disc=($("discAmt").value||"").replace(/,/g,"").trim();
+  var a=parseFloat(amt)||0;
+  var dsc=parseFloat(disc)||0;
+  if(dsc<0){ showMsg("ส่วนลดต้องไม่ติดลบ", false); return; }
+  if(a<=0 && dsc<=0){ showMsg("กรุณากรอกจำนวนที่จ่าย หรือส่วนลด", false); return; }
+  if(a+dsc > parseFloat(CUR.remaining)+0.005){ showMsg("จำนวนที่จ่าย+ส่วนลดเกินยอดคงเหลือ (คงเหลือ ฿"+fmt(CUR.remaining)+")", false); return; }
+
+  $("confirmBtn").disabled=true; $("confirmBtn").textContent="กำลังบันทึก…";
+  api({ action:"pay.save", row:CUR.row, amount:amt, discount:disc, pay:$("payMethod").value, date:$("date").value })
+  .then(function(d){
+    $("confirmBtn").disabled=false; $("confirmBtn").textContent="✔ ยืนยันการจ่าย";
+    if(!d.ok){ showMsg("บันทึกไม่สำเร็จ: "+d.error, false); return; }
+    var remLeft = parseFloat(CUR.remaining) - a - dsc;
+    $("doneDetail").textContent = $("pTitle").textContent + " • จ่าย ฿" + fmt(a) +
+      (dsc>0 ? (" + ส่วนลด ฿"+fmt(dsc)) : "") +
+      (remLeft>0.005 ? (" • คงเหลือ ฿"+fmt(remLeft)) : " • ชำระครบแล้ว");
+    hideMsg(); hide($("payView")); show($("done")); window.scrollTo(0,0);
+  }).catch(function(e){
+    $("confirmBtn").disabled=false; $("confirmBtn").textContent="✔ ยืนยันการจ่าย";
+    showMsg("บันทึกไม่สำเร็จ: "+(e.message||e), false);
+  });
+});
+
+// จ่ายรายการอื่นต่อ → กลับไปโหลดรายการโครงการเดิมใหม่ (ยอดอัปเดตแล้ว)
+$("moreBtn").addEventListener("click", function(){
+  CUR=null; hide($("done")); show($("listView")); hideMsg();
+  loadList(); window.scrollTo(0,0);
+});
+// ปิดหน้านี้
+$("closeBtn").addEventListener("click", function(){
+  try{ if (window.liff && liff.closeWindow){ liff.closeWindow(); } }catch(e){}
+  $("done").innerHTML = '<div style="font-size:52px">👋</div>'
+    + '<div style="font-weight:700;font-size:18px;margin-top:8px">ปิดหน้านี้ได้เลยค่ะ</div>'
+    + '<div class="hint" style="margin-top:6px">บันทึกการจ่ายเรียบร้อยแล้ว</div>';
+});
+
+/* ========= start (LIFF) ========= */
+function start(){
+  if (!LIFF_ID || LIFF_ID==="PASTE_PAY_LIFF_ID"){ showMsg("ยังไม่ได้ตั้งค่า LIFF_ID (แก้ตัวแปร LIFF_ID ในไฟล์ pay.html)", false); hide($("loading")); return; }
+  liff.init({ liffId: LIFF_ID }).then(function(){
+    if (!liff.isLoggedIn()){ liff.login(); return; }
+    TOKEN = liff.getAccessToken() || "";
+    if (!TOKEN){ showMsg("ไม่พบ access token — กรุณาเปิดฟอร์มนี้ผ่านแอป LINE", false); return; }
+    boot();
+  }).catch(function(e){
+    showMsg("เริ่มระบบ LINE ไม่สำเร็จ: " + (e.message||e), false);
+  });
+}
+window.addEventListener("load", start);
+</script>
+</body>
+</html>
