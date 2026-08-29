@@ -57,6 +57,19 @@
   .center{text-align:center; color:var(--mut); padding:40px 20px}
   .hide{display:none !important}
   .amount{font-size:22px; font-weight:700; text-align:right}
+.datebtn{width:100%;text-align:left;padding:12px 14px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;font-size:16px;color:var(--ink);}
+.cal{margin-top:8px;border:1px solid #e2e8f0;border-radius:14px;padding:12px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.12);}
+.cal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.cal-hd button{border:none;background:#f1f5f9;border-radius:10px;width:40px;height:40px;font-size:22px;line-height:1;color:var(--red);}
+#calTitle{font-weight:700;font-size:16px;color:var(--ink);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-dow div{text-align:center;font-size:12px;color:var(--mut);padding:4px 0;}
+.cal-day{text-align:center;padding:10px 0;border-radius:10px;font-size:15px;cursor:pointer;color:var(--ink);}
+.cal-day.mut{color:transparent;cursor:default;}
+.cal-day.sel{background:var(--red);color:#fff;font-weight:700;}
+.cal-day.today{border:1px solid var(--red);}
+.cal-foot{margin-top:8px;text-align:right;}
+.cal-foot button{border:none;background:#f1f5f9;border-radius:10px;padding:8px 16px;color:var(--red);font-weight:600;}
 </style>
 </head>
 <body>
@@ -81,7 +94,18 @@
     <select id="project"><option value="">— เลือกโครงการ —</option></select>
 
     <label>วันที่ <span class="req">*</span></label>
-    <input type="date" id="date" />
+    <button type="button" id="dateBtn" class="datebtn">— เลือกวันที่ —</button>
+    <input type="hidden" id="date" />
+    <div id="cal" class="cal hide">
+      <div class="cal-hd">
+        <button type="button" id="calPrev">‹</button>
+        <div id="calTitle">—</div>
+        <button type="button" id="calNext">›</button>
+      </div>
+      <div class="cal-grid cal-dow" id="calDow"></div>
+      <div class="cal-grid" id="calDays"></div>
+      <div class="cal-foot"><button type="button" id="calToday">วันนี้</button></div>
+    </div>
 
     <label>หมวดหมู่ <span class="req">*</span></label>
     <select id="category"><option value="">— เลือกหมวดหมู่ —</option></select>
@@ -162,6 +186,46 @@ function api(payload){
     body: JSON.stringify(payload)
   }).then(function(r){ return r.json(); });
 }
+// ===== ปฏิทินไทย (สร้างเอง) — ค่าที่เก็บใน #date ยังเป็น ค.ศ. yyyy-mm-dd เหมือนเดิม =====
+var TH_MONTHS=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+var TH_DOW=["อา","จ","อ","พ","พฤ","ศ","ส"];
+var calY, calM; // ปี ค.ศ. และเดือน (0-11) ที่กำลังแสดง
+function pad2(n){ return (n<10?"0":"")+n; }
+function isoOf(y,m,d){ return y+"-"+pad2(m+1)+"-"+pad2(d); }
+function thaiDate(iso){
+  if(!iso) return "";
+  var p = iso.split("-");           // yyyy-mm-dd
+  if(p.length!==3) return "";
+  return parseInt(p[2],10) + " " + TH_MONTHS[parseInt(p[1],10)-1] + " " + (parseInt(p[0],10)+543);
+}
+function updateDateUI(){
+  var v = $("date").value;
+  $("dateBtn").textContent = v ? thaiDate(v) : "— เลือกวันที่ —";
+}
+function renderCal(){
+  $("calTitle").textContent = TH_MONTHS[calM] + " " + (calY+543);
+  var dow=$("calDow"); dow.innerHTML="";
+  for(var i=0;i<7;i++){ var e=document.createElement("div"); e.textContent=TH_DOW[i]; dow.appendChild(e); }
+  var days=$("calDays"); days.innerHTML="";
+  var first=new Date(calY,calM,1).getDay();
+  var dim=new Date(calY,calM+1,0).getDate();
+  var sel=$("date").value;
+  var t=new Date(); var todayIso=isoOf(t.getFullYear(),t.getMonth(),t.getDate());
+  for(var i=0;i<first;i++){ var b=document.createElement("div"); b.className="cal-day mut"; days.appendChild(b); }
+  for(var dd=1;dd<=dim;dd++){
+    var iso=isoOf(calY,calM,dd);
+    var c=document.createElement("div"); c.className="cal-day"; c.textContent=dd;
+    if(iso===sel) c.className+=" sel";
+    if(iso===todayIso) c.className+=" today";
+    (function(x){ c.addEventListener("click",function(){ $("date").value=x; updateDateUI(); hide($("cal")); }); })(iso);
+    days.appendChild(c);
+  }
+}
+function openCal(){
+  var v=$("date").value; var d = v ? new Date(v+"T00:00:00") : new Date();
+  calY=d.getFullYear(); calM=d.getMonth();
+  renderCal(); show($("cal"));
+}
 
 /* ========= boot ========= */
 function boot(){
@@ -183,6 +247,7 @@ function boot(){
     var now = new Date();
     var th = new Date(now.getTime() + (now.getTimezoneOffset()+420)*60000);
     $("date").value = th.toISOString().slice(0,10);
+    updateDateUI();
 
     hide($("loading")); show($("form")); show($("bar"));
   }).catch(function(e){
@@ -191,6 +256,16 @@ function boot(){
 }
 
 /* ========= events ========= */
+// ปฏิทินไทย: เปิด/ปิด + เลื่อนเดือน + วันนี้
+$("dateBtn").addEventListener("click", function(){
+  if ($("cal").classList.contains("hide")) openCal(); else hide($("cal"));
+});
+$("calPrev").addEventListener("click", function(){ calM--; if(calM<0){ calM=11; calY--; } renderCal(); });
+$("calNext").addEventListener("click", function(){ calM++; if(calM>11){ calM=0; calY++; } renderCal(); });
+$("calToday").addEventListener("click", function(){
+  var t=new Date(); $("date").value=isoOf(t.getFullYear(),t.getMonth(),t.getDate());
+  updateDateUI(); hide($("cal"));
+});
 // สลับสถานะชำระ
 $("segPay").addEventListener("click", function(ev){
   var b = ev.target.closest("button"); if(!b) return;
