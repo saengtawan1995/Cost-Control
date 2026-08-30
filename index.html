@@ -127,6 +127,10 @@
     <label>เลขที่บิล / เอกสาร</label>
     <input type="text" id="billNo" placeholder="เช่น INV-001 (ไม่บังคับ)" />
 
+    <label>รูปบิล / ใบเสร็จ <span style="color:var(--mut);font-weight:400">(ถ้ามี)</span></label>
+    <input type="file" id="photo" accept="image/*" capture="environment" />
+    <div id="photoInfo" class="hint hide" style="margin-top:6px"></div>
+
     <label>รายการ</label>
     <input type="text" id="item" placeholder="รายละเอียด เช่น ค่าปูน 20 ถุง" />
 
@@ -309,6 +313,37 @@ $("saveStoreBtn").addEventListener("click", function(){
   }).catch(function(e){ $("saveStoreBtn").disabled=false; showMsg("เพิ่มร้านไม่สำเร็จ: "+(e.message||e), false); });
 });
 
+// อ่านรูป + ย่อขนาดก่อนส่ง (คืน base64 หรือ "" ถ้าไม่มีรูป)
+function readPhoto(){
+  return new Promise(function(resolve){
+    var f = $("photo").files && $("photo").files[0];
+    if(!f){ resolve(""); return; }
+    var fr = new FileReader();
+    fr.onload = function(){
+      var img = new Image();
+      img.onload = function(){
+        var MAX = 1280;
+        var w = img.width, h = img.height;
+        if(w>h && w>MAX){ h=Math.round(h*MAX/w); w=MAX; }
+        else if(h>=w && h>MAX){ w=Math.round(w*MAX/h); h=MAX; }
+        var cv = document.createElement("canvas"); cv.width=w; cv.height=h;
+        cv.getContext("2d").drawImage(img,0,0,w,h);
+        try{ resolve(cv.toDataURL("image/jpeg", 0.8)); }
+        catch(e){ resolve(""); }
+      };
+      img.onerror = function(){ resolve(""); };
+      img.src = fr.result;
+    };
+    fr.onerror = function(){ resolve(""); };
+    fr.readAsDataURL(f);
+  });
+}
+$("photo").addEventListener("change", function(){
+  var f = this.files && this.files[0];
+  if(f){ $("photoInfo").textContent = "แนบรูป: "+f.name; show($("photoInfo")); }
+  else { hide($("photoInfo")); }
+});
+
 // บันทึก
 $("submitBtn").addEventListener("click", function(){
   var project=$("project").value, category=$("category").value;
@@ -318,13 +353,15 @@ $("submitBtn").addEventListener("click", function(){
   if(!amount || parseFloat(amount)<=0){ showMsg("กรุณากรอกจำนวนเงินให้ถูกต้อง", false); return; }
 
   $("submitBtn").disabled=true; $("submitBtn").textContent="กำลังบันทึก…";
-  api({
+  readPhoto().then(function(photo){
+  return api({
     action:"expense.save",
     project:project, date:$("date").value, category:category,
     store:$("store").value, storeCode:$("store").value,
     billNo:$("billNo").value, item:$("item").value, amount:amount,
     payStatus:(PAY_STATUS==="debt"?"ค้างชำระ":"ชำระแล้ว"),
-    pay:(PAY_STATUS==="debt"?"":$("pay").value)
+    pay:(PAY_STATUS==="debt"?"":$("pay").value),
+    photo:photo
   }).then(function(d){
     if(!d.ok){
       $("submitBtn").disabled=false; $("submitBtn").textContent="บันทึกค่าใช้จ่าย";
@@ -341,12 +378,14 @@ $("submitBtn").addEventListener("click", function(){
     $("submitBtn").disabled=false; $("submitBtn").textContent="บันทึกค่าใช้จ่าย";
     showMsg("บันทึกไม่สำเร็จ: "+(e.message||e), false);
   });
+  });
 });
 
 // บันทึกรายการอื่นต่อ → เคลียร์เฉพาะช่องรายการ (คงโครงการ/วันที่ไว้) แล้วกลับมาที่ฟอร์ม
 $("againBtn").addEventListener("click", function(){
   $("billNo").value=""; $("item").value=""; $("amount").value="";
   $("store").value=""; $("category").value="";
+  $("photo").value=""; hide($("photoInfo"));
   $("submitBtn").disabled=false; $("submitBtn").textContent="บันทึกค่าใช้จ่าย";
   hide($("done")); show($("form")); show($("bar"));
   $("msg").className="msg"; // ซ่อนข้อความ
